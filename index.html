@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mastrland: 葬爱·家族 (V5.0 沉浸版)</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff00;
+            --neon-blue: #00ffff;
+            --neon-yellow: #ffff00;
+            --neon-red: #ff3333;
+            --neon-purple: #9d00ff;
+            --bg-color: #050005;
+            --font-main: 'VT323', "SimSun", monospace;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            color: #ddd;
+            font-family: var(--font-main);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+        }
+
+        #game-frame {
+            width: 100%; max-width: 450px; height: 100%; max-height: 850px;
+            background: var(--bg-color);
+            border: 2px solid var(--neon-purple);
+            box-shadow: 0 0 15px var(--neon-purple), inset 0 0 20px rgba(0,0,0,0.9);
+            position: relative; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .deco-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; opacity: 0.1; z-index: 0;
+            background: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><text x="10" y="50" font-family="SimSun" font-size="20" fill="white">殺馬特</text></svg>');
+        }
+
+        /* Buttons */
+        .btn {
+            background: #111; border: 1px solid #666; color: #fff; padding: 12px;
+            font-family: var(--font-main); font-size: 1.1rem; cursor: pointer;
+            box-shadow: 3px 3px 0 #333; transition: all 0.1s;
+            text-shadow: 1px 1px 0 #000; position: relative; overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #333; }
+        .btn.disabled { opacity: 0.5; cursor: not-allowed; border-color: #444; color: #777; box-shadow: none; transform: none !important; }
+        .btn-primary { border-color: var(--neon-pink); color: var(--neon-pink); box-shadow: 3px 3px 0 var(--neon-pink); }
+        .btn-action { border-color: var(--neon-blue); color: var(--neon-blue); box-shadow: 3px 3px 0 var(--neon-blue); }
+        .btn-danger { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 3px 3px 0 var(--neon-red); }
+
+        /* HUD */
+        #hud {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; background: #1a0520; border-bottom: 2px dashed var(--neon-pink); z-index: 10;
+        }
+        .hud-avatar-frame {
+            width: 48px; height: 48px; border: 2px solid var(--neon-green); 
+            background: #000; display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+        }
+        .hud-info { margin-left: 10px; display: flex; flex-direction: column; }
+        .hud-stats { display: flex; gap: 12px; font-size: 0.9rem; color: #ccc; }
+        .stat-val { color: var(--neon-yellow); font-weight: bold; }
+        
+        .family-badge {
+            position: absolute; bottom: -5px; right: -5px; background: var(--neon-purple); 
+            color: #fff; font-size: 0.6rem; padding: 2px 4px; border-radius: 4px; display: none;
+        }
+
+        #turn-banner {
+            background: var(--neon-purple); color: #fff; text-align: center; font-size: 0.9rem;
+            padding: 3px; border-bottom: 1px solid #fff; font-family: "SimSun"; letter-spacing: 2px;
+        }
+
+        /* Map */
+        #map-container {
+            flex: 1; overflow-y: auto; padding: 20px;
+            background: radial-gradient(circle, #220022 0%, #000 100%);
+            scrollbar-width: none; position: relative; z-index: 1;
+        }
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px;
+            padding-bottom: 80px;
+        }
+        .tile {
+            aspect-ratio: 1; border: 1px solid #444; border-radius: 4px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; background: rgba(0,0,0,0.6); transition: 0.2s;
+        }
+        .tile.active { 
+            border: 2px solid #fff; box-shadow: 0 0 15px var(--neon-pink); z-index: 2; 
+            background: rgba(255,0,255,0.2); transform: scale(1.1);
+        }
+        .tile.locked { filter: grayscale(1) brightness(0.5); border: 1px dashed #333; pointer-events: none; }
+        .tile-icon { font-size: 1.8rem; margin-bottom: 2px; filter: drop-shadow(0 0 5px var(--neon-blue)); }
+        .tile-name { font-size: 0.7rem; color: #aaa; text-align: center; line-height: 1; font-family: "SimSun"; }
+        
+        .t-school { border-color: var(--neon-blue); color: var(--neon-blue); }
+        .t-work { border-color: var(--neon-green); color: var(--neon-green); }
+        .t-boss { border-color: var(--neon-red); animation: pulse 2s infinite; }
+        .t-cafe { border-color: var(--neon-purple); color: var(--neon-purple); }
+
+        /* Token */
+        .token {
+            width: 32px; height: 32px; position: absolute; z-index: 10;
+            display: flex; justify-content: center; align-items: center;
+            transition: all 0.3s ease-out; filter: drop-shadow(0 0 5px #fff);
+        }
+        .hair-shape {
+            width: 100%; height: 100%; position: absolute; top: -5px;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: var(--token-color);
+        }
+        .face-shape {
+            position: absolute; bottom: 0; width: 18px; height: 18px;
+            background: #ffe0bd; border-radius: 50%; border: 1px solid #000;
+        }
+
+        /* Controls */
+        #controls {
+            padding: 10px; background: #111; border-top: 2px solid var(--neon-pink);
+            display: flex; flex-direction: column; gap: 8px; z-index: 10;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        }
+        #log {
+            height: 100px; /* Taller log area */
+            overflow-y: auto; font-size: 0.95rem; color: var(--neon-green);
+            background: #000; padding: 8px; border: 1px solid #333; 
+            font-family: "SimSun", monospace; line-height: 1.4;
+        }
+        .martian { color: var(--neon-pink); font-family: "SimSun"; font-style: italic; }
+        .sys-msg { color: #888; }
+
+        /* Modals */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 100;
+            display: none; justify-content: center; align-items: center;
+        }
+        .modal-box {
+            width: 90%; max-width: 380px; padding: 20px; background: #000;
+            border: 2px solid var(--neon-blue); box-shadow: 0 0 30px rgba(0,255,255,0.2);
+            text-align: center; position: relative; max-height: 90vh; overflow-y: auto;
+        }
+        .modal-box::after {
+            content: "★ MASTRLAND ★"; position: absolute; bottom: 2px; right: 5px;
+            font-size: 0.6rem; color: #333;
+        }
+
+        /* Lists */
+        .opt-list { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+        .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .char-card { border: 1px solid #fff; padding: 8px; cursor: pointer; text-align: center; background: #222; }
+        .char-card.selected { border-color: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); background: #300; }
+        
+        .fam-btn { border: 1px solid #555; padding: 10px; margin-bottom: 5px; cursor: pointer; text-align: left;}
+        .fam-btn:hover { border-color: var(--neon-purple); background: #110011; }
+
+        @keyframes pulse { 0%{opacity:1} 50%{opacity:0.6} 100%{opacity:1} }
+    </style>
+</head>
+<body>
+
+<div id="game-frame">
+    <div class="deco-bg"></div>
+    <div id="turn-banner">系統加載中...</div>
+    
+    <div id="hud">
+        <div style="display:flex; align-items:center;">
+            <div class="hud-avatar-frame">
+                <div id="p-avatar-visual" style="width:100%;height:100%;position:relative;">
+                    <div class="hair-shape" id="hud-hair" style="top:5px; transform:scale(0.8);"></div>
+                </div>
+                <div class="family-badge" id="hud-fam">无</div>
+            </div>
+            <div class="hud-info">
+                <div id="p-name" style="color:#fff; font-family:'SimSun'; font-weight:bold;">Player</div>
+                <div id="p-job" style="font-size:0.7rem; color:var(--neon-green);">无业</div>
+            </div>
+        </div>
+        <div class="hud-stats">
+            <div>💰 <span class="stat-val" id="p-money">0</span></div>
+            <div>💖 <span class="stat-val" id="p-mood">0</span></div>
+            <div>👑 <span class="stat-val" id="p-social">0</span></div>
+        </div>
+    </div>
+
+    <div id="map-container">
+        <div class="grid" id="game-grid"></div>
+    </div>
+
+    <div id="controls">
+        <div id="log">
+            <span style="color:var(--neon-pink)">>>> 葬爱·家族 <<<</span><br>
+            在这个冰冷的世界，只有发型是有温度的。
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button id="btn-roll" class="btn btn-primary" style="flex:2" onclick="Game.rollDice()">🎲 擲骰子</button>
+            <button id="btn-bag" class="btn btn-action" style="flex:1" onclick="Game.toggleBag()">🎒</button>
+            <button id="btn-help" class="btn" style="flex:0.5" onclick="Game.showRules()">❓</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="modal-overlay" class="modal-overlay">
+    <div class="modal-box" id="modal-content">
+        <!-- Content injected dynamically -->
+    </div>
+</div>
+
+<script>
+/** MASTRLAND CORE V5.0 - IMMERSIVE */
+
+const ROLES = [
+    { id: 'luoshang', name: '罗殇', title: '杀马特教父', color: '#ff00ff', quotes: ["硪們是糖，甜到憂傷", "别在硪坟前哭"] },
+    { id: 'xiaolu', name: '小路', title: '溜冰王子', color: '#00ffff', quotes: ["风一样的男子", "滑轮鞋是硪的灵魂"] },
+    { id: 'pipi', name: '皮皮', title: '纹身师', color: '#ff99ff', quotes: ["姐的傲骨，你模仿不来", "心若向阳"] },
+    { id: 'dafei', name: '大飞', title: '情圣', color: '#ffff00', quotes: ["做个俗人，贪财好色", "爱过，痛过"] }
+];
+
+const SKILLS = {
+    'hair': { n: '理发', cost: [100, 300, 800], max: 3 },
+    'phone': { n: '修手机', cost: [150, 400, 1000], max: 3 },
+    'motor': { n: '修车', cost: [200, 500, 1200], max: 3 },
+    'tattoo': { n: '纹身', cost: [300, 600, 1500], max: 3 }
+};
+
+const JOBS = {
+    'hair': { n: '发廊', wage: 120 },
+    'phone': { n: '手机店', wage: 150 },
+    'motor': { n: '车行', wage: 180 },
+    'tattoo': { n: '纹身店', wage: 220 }
+};
+
+const FAMILIES = {
+    'shamate': { n:'杀马特', desc:'资本获取+20%', color:'#ff00ff' },
+    'zangai': { n:'葬爱', desc:'心情恢复+5', color:'#bd00ff' },
+    'smile': { n:'狂少', desc:'战斗力+10', color:'#ffff00' },
+    'blood': { n:'血魔', desc:'打工收入+10%', color:'#ff0000' }
+};
+
+const ITEMS = {
+    'bike': { n: '鬼火摩托', cost: 500, desc: '移动+1', type: 'passive' },
+    'phone': { n: '诺基亚', cost: 300, desc: '手机店打工加成', type: 'passive' },
+    'tool': { n: '工具箱', cost: 150, desc: '修车打工加成', type: 'passive' },
+    'wig1': { n: '七彩爆炸头', cost: 300, desc: '心情上限+20', type: 'hair', class: 'wig-rainbow' },
+    'wig2': { n: '刺猬头', cost: 200, desc: '战斗力+5', type: 'hair', class: 'wig-spike' },
+    'cig': { n: '散花烟', cost: 20, desc: '心情+15 (消耗品)', type: 'consumable', effect: (p)=>{ p.mood+=15; return "哥抽的不是烟，是寂寞。"; }}
+};
+
+// Map Data
+const MAP = [
+    { t:'start', i:'🏠', n:'城中村', unlock:0 },
+    { t:'factory', i:'🏭', n:'电子厂', unlock:0 },
+    { t:'school', i:'🎓', n:'蓝翔技校', unlock:0 },
+    { t:'shop', i:'🛒', n:'地摊', unlock:0 },
+    { t:'work', i:'💈', n:'皇家发廊', job:'hair', unlock:0 },
+    { t:'enemy', i:'👮', n:'治安亭', unlock:0 },
+    { t:'work', i:'🔧', n:'兄弟车行', job:'motor', unlock:0 },
+    { t:'cafe', i:'💻', n:'飞宇网吧', unlock:0 }, // Net Cafe
+    { t:'job', i:'💼', n:'人才市场', unlock:2 }, // Job Market
+    { t:'work', i:'📱', n:'手机店', job:'phone', unlock:0 },
+    { t:'tv', i:'📺', n:'电视台', unlock:5 },
+    { t:'work', i:'🐲', n:'纹身店', job:'tattoo', unlock:3 },
+    { t:'art', i:'🎨', n:'画廊', unlock:8 },
+    { t:'boss', i:'👹', n:'马老板', unlock:0 } // Boss Node
+];
+
+const Game = {
+    players: [], turn: 0, round: 1, state: 'menu',
+
+    init: function() {
+        this.showCharSelect();
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && this.state === 'idle') {
+                e.preventDefault(); this.rollDice();
+            }
+        });
+    },
+
+    // --- UI RENDERING ---
+    
+    showModal: function(html) {
+        const el = document.getElementById('modal-content');
+        el.innerHTML = html;
+        document.getElementById('modal-overlay').style.display = 'flex';
+    },
+    
+    closeModal: function() {
+        document.getElementById('modal-overlay').style.display = 'none';
+        if(this.state === 'event') this.nextTurn();
+    },
+
+    // --- CHAR SELECT ---
+    
+    showCharSelect: function() {
+        let html = `<h2 style="color:var(--neon-pink);margin-top:0">★ 選擇身份 ★</h2><div class="char-grid">`;
+        ROLES.forEach((r, i) => {
+            html += `<div class="char-card" id="char-${i}" onclick="Game.toggleSelect(${i})">
+                <div style="font-size:2rem">${r.avatar || '🦹'}</div>
+                <div style="font-weight:bold;color:${r.color}">${r.name}</div>
+                <div style="font-size:0.8rem;color:#aaa">${r.title}</div>
+            </div>`;
+        });
+        html += `</div><div style="margin-top:15px"><button class="btn btn-primary" style="width:100%" onclick="Game.startGame()">進入游戏</button></div>`;
+        this.showModal(html);
+        this.selected = [];
+    },
+
+    toggleSelect: function(i) {
+        if(this.selected.includes(i)) this.selected = this.selected.filter(x=>x!==i);
+        else if(this.selected.length < 4) this.selected.push(i);
+        
+        // Update UI
+        document.querySelectorAll('.char-card').forEach((el, idx) => {
+            el.classList.toggle('selected', this.selected.includes(idx));
+        });
+    },
+
+    startGame: function() {
+        if(this.selected.length === 0) return alert("请至少选一个人！");
+        this.players = this.selected.map(i => ({
+            ...ROLES[i], money: 100, mood: 80, social: 20, pos: 0,
+            jobExp: { hair:0, phone:0, motor:0, tattoo:0 },
+            items: [], hairStyle: 'default', family: null, frozen: 0
+        }));
+        this.closeModal();
+        this.state = 'idle';
+        this.renderMap();
+        this.createTokens();
+        this.startTurn();
+    },
+
+    // --- GAME LOOP ---
+
+    renderMap: function() {
+        const grid = document.getElementById('game-grid');
+        grid.innerHTML = '';
+        MAP.forEach((t, i) => {
+            const el = document.createElement('div');
+            el.className = `tile t-${t.t}`;
+            el.id = `tile-${i}`;
+            if(this.round < t.unlock) {
+                el.className += ' locked';
+                el.innerHTML = `<div class="tile-icon">🔒</div><div class="tile-name">???</div>`;
+            } else {
+                el.innerHTML = `<div class="tile-icon">${t.i}</div><div class="tile-name">${t.n}</div>`;
+            }
+            grid.appendChild(el);
+        });
+    },
+
+    createTokens: function() {
+        const con = document.getElementById('map-container');
+        this.players.forEach((p, i) => {
+            const t = document.createElement('div');
+            t.className = 'token';
+            t.id = `tok-${i}`;
+            t.style.setProperty('--token-color', p.color);
+            t.innerHTML = `<div class="hair-shape"></div><div class="face-shape"></div>`;
+            con.appendChild(t);
+        });
+        this.updateTokens();
+    },
+
+    updateTokens: function() {
+        this.players.forEach((p, i) => {
+            const tile = document.getElementById(`tile-${p.pos}`);
+            const tok = document.getElementById(`tok-${i}`);
+            
+            // Hair visual update
+            const hair = tok.querySelector('.hair-shape');
+            hair.style.background = p.color; // Default
+            if(p.hairStyle === 'wig1') { // Rainbow
+                hair.style.clipPath = 'circle(50% at 50% 50%)';
+                hair.style.background = 'radial-gradient(circle, red, orange, yellow, green, blue, purple)';
+                hair.style.top = '-8px'; hair.style.width='120%';
+            } else if(p.hairStyle === 'wig2') { // Spike
+                hair.style.clipPath = 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)';
+                hair.style.top = '-10px';
+            }
+
+            const offset = (i - (this.players.length-1)/2) * 6;
+            tok.style.left = (tile.offsetLeft + 15 + offset) + 'px';
+            tok.style.top = (tile.offsetTop + 10 + offset) + 'px';
+            
+            if(i === this.turn) {
+                tok.style.zIndex = 20; tok.style.transform = "scale(1.3)";
+                tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                tok.style.zIndex = 10; tok.style.transform = "scale(1)";
+            }
+        });
+    },
+
+    curr: function() { return this.players[this.turn]; },
+
+    startTurn: function() {
+        this.state = 'idle';
+        const p = this.curr();
+        
+        // HUD Update
+        document.getElementById('p-name').innerText = p.name;
+        document.getElementById('p-money').innerText = p.money;
+        document.getElementById('p-mood').innerText = p.mood;
+        document.getElementById('p-social').innerText = p.social;
+        
+        // Family Badge
+        const famBadge = document.getElementById('hud-fam');
+        if(p.family) {
+            famBadge.style.display = 'block';
+            famBadge.innerText = FAMILIES[p.family].n;
+            famBadge.style.background = FAMILIES[p.family].color;
+        } else famBadge.style.display = 'none';
+
+        // HUD Hair update
+        const hudHair = document.getElementById('hud-hair');
+        hudHair.style.background = p.color;
+        if(p.hairStyle === 'wig1') {
+            hudHair.style.clipPath = 'circle(50% at 50% 50%)';
+            hudHair.style.background = 'radial-gradient(circle, red, orange, yellow, green, blue, purple)';
+        } else {
+            hudHair.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+        }
+
+        let jobTxt = "无业";
+        for(let k in p.jobExp) if(p.jobExp[k]>0) jobTxt = `${SKILLS[k].n} Lv.${p.jobExp[k]}`;
+        document.getElementById('p-job').innerText = jobTxt;
+
+        document.getElementById('turn-banner').innerText = `>>> 第${this.round}周: ${p.name} 的回合 <<<`;
+        
+        // Passive Family Bonus
+        if(p.family === 'zangai') { p.mood += 5; this.log("家族buff: 心情+5"); }
+
+        // Random Quote
+        if(Math.random()<0.3) this.log(`<span class="martian" style="color:${p.color}">${p.name}: ${p.quotes[Math.floor(Math.random()*p.quotes.length)]}</span>`);
+        
+        if(p.money <= 0 || p.mood <= 0) {
+            // Chance to recover instead of instant game over
+            this.modal('⚠️ 穷途末路', '💀', '你快撑不下去了...', [
+                { t:'向家里要钱 (+50元)', cb:()=>{ p.money+=50; p.social-=10; this.log("妈给你打了50块..."); this.closeModal(); } },
+                { t:'乞讨 (+心情)', cb:()=>{ p.mood+=30; p.social-=20; this.log("尊严算什么..."); this.closeModal(); } },
+                { t:'放弃 (结束)', cb:()=>{ this.gameOver(false); } }
+            ]);
+            return;
+        }
+    },
+
+    nextTurn: function() {
+        this.turn++;
+        if(this.turn >= this.players.length) {
+            this.turn = 0; this.round++;
+            this.log(`=== 第 ${this.round} 周 ===`);
+            this.renderMap();
+        }
+        this.startTurn();
+    },
+
+    rollDice: function() {
+        if(this.state !== 'idle') return;
+        this.state = 'rolling';
+        
+        const p = this.curr();
+        let bonus = p.items.includes('bike') ? 1 : 0;
+        let roll = Math.floor(Math.random() * 6) + 1 + bonus;
+        this.log(`${p.name} 掷出了 ${roll} 点!`);
+        
+        let steps = roll;
+        const timer = setInterval(() => {
+            p.pos = (p.pos + 1) % MAP.length;
+            this.updateTokens();
+            steps--;
+            if(steps <= 0) {
+                clearInterval(timer);
+                setTimeout(() => this.handleTile(), 500);
+            }
+        }, 150);
+    },
+
+    handleTile: function() {
+        const p = this.curr(); const t = MAP[p.pos];
+        if(this.round < t.unlock) {
+            this.log(`[${t.n}] 正在施工中...(需第${t.unlock}周)`);
+            this.nextTurn(); return;
+        }
+        
+        this.state = 'event';
+        switch(t.t) {
+            case 'factory': this.evtFactory(); break;
+            case 'school': this.evtSchool(); break;
+            case 'work': this.evtWork(t.job); break;
+            case 'shop': this.evtShop(); break;
+            case 'boss': this.evtBoss(); break;
+            case 'cafe': this.evtCafe(); break; // New Cafe Logic
+            case 'job': this.evtJobMarket(); break;
+            default: this.log(`到达 ${t.n}`); this.nextTurn();
+        }
+    },
+
+    // --- EVENTS ---
+
+    // 1. Boss Node: Salary or Penalty
+    evtBoss: function() {
+        const p = this.curr();
+        let r = Math.random();
+        let html = `<h2 style="color:var(--neon-red)">👹 马老板办公室</h2>`;
+        let desc = "";
+        let action = null;
+
+        if (r < 0.6) {
+            desc = "马老板心情不错，发了低保。";
+            action = () => { p.money += 100; this.log("领到100元工资。"); this.closeModal(); };
+        } else if (r < 0.9) {
+            desc = "“你的发型太乱了！扣钱！”";
+            action = () => { p.money -= 50; p.mood -= 10; this.log("被扣50元。"); this.closeModal(); };
+        } else {
+            desc = "“表现不错，升职加薪！”";
+            action = () => { p.money += 200; p.social += 20; this.log("获得200元奖金！"); this.closeModal(); };
+        }
+
+        this.showModal(`
+            ${html}<p>${desc}</p>
+            <div class="opt-list"><button class="btn btn-action" onclick="Game.currentBossAction()">确定</button></div>
+        `);
+        this.currentBossAction = action;
+    },
+
+    // 2. Net Cafe: Family & Chill
+    evtCafe: function() {
+        const p = this.curr();
+        
+        let btns = `<div class="opt-list">`;
+        
+        // Family Logic
+        if(!p.family) {
+            btns += `<button class="btn btn-primary" onclick="Game.showFamilies()">加入家族</button>`;
+        } else {
+            btns += `<div style="color:${FAMILIES[p.family].color};font-size:0.9rem">家族: ${FAMILIES[p.family].n}</div>`;
+        }
+
+        btns += `<button class="btn btn-action" onclick="Game.doSurf()">上网冲浪 (-20元 +30心情)</button>`;
+        btns += `<button class="btn" onclick="Game.closeModal()">离开</button></div>`;
+
+        this.showModal(`<h2 style="color:var(--neon-blue)">💻 飞宇网吧</h2><p>这里是我们的精神家园。</p>${btns}`);
+    },
+
+    doSurf: function() {
+        const p = this.curr();
+        p.money -= 20; p.mood += 30;
+        this.log("在劲舞团里遇到了真爱...心情大好。");
+        this.closeModal();
+    },
+
+    showFamilies: function() {
+        let html = `<h2 style="color:var(--neon-purple)">选择家族</h2><div class="opt-list">`;
+        for(let k in FAMILIES) {
+            let f = FAMILIES[k];
+            html += `<div class="fam-btn" onclick="Game.joinFamily('${k}')">
+                <b style="color:${f.color}">${f.n}</b><br><span style="font-size:0.7rem;color:#aaa">${f.desc}</span>
+            </div>`;
+        }
+        this.showModal(html + `</div>`);
+    },
+
+    joinFamily: function(k) {
+        const p = this.curr();
+        p.family = k;
+        this.log(`加入了 [${FAMILIES[k].n}] 家族！`);
+        this.closeModal();
+    },
+
+    // 3. School (Logic)
+    evtSchool: function() {
+        const p = this.curr();
+        let html = `<h2 style="color:var(--neon-blue)">🎓 蓝翔技校</h2>`;
+        
+        let btns = `<div class="opt-list">`;
+        for(let k in SKILLS) {
+            let lvl = p.jobExp[k];
+            if(lvl < SKILLS[k].max) {
+                let cost = SKILLS[k].cost[lvl];
+                let canAfford = p.money >= cost;
+                
+                btns += `<button class="btn ${canAfford ? 'btn-action' : 'disabled'}" 
+                    onclick="${canAfford ? `Game.doLearn('${k}', ${cost})` : ''}">
+                    进修${SKILLS[k].n} (Lv.${lvl}→${lvl+1}) <br> <span style="font-size:0.8rem">学费: ${cost}</span>
+                </button>`;
+            }
+        }
+        btns += `<button class="btn" onclick="Game.closeModal()">离开</button></div>`;
+        this.showModal(html + btns);
+    },
+
+    doLearn: function(key, cost) {
+        const p = this.curr();
+        p.money -= cost;
+        p.jobExp[key]++;
+        this.log(`技能升级！获得了 ${SKILLS[key].n} Lv.${p.jobExp[key]}`);
+        this.closeModal();
+    },
+
+    // 4. Work (Job & Shop Logic)
+    evtWork: function(key) {
+        const p = this.curr();
+        const job = JOBS[key];
+        const lvl = p.jobExp[key];
+        
+        let html = `<h2 style="color:var(--neon-green)">${MAP[p.pos].i} ${MAP[p.pos].n}</h2>`;
+        let btns = `<div class="opt-list">`;
+
+        // Work Button (Check Skill)
+        if(lvl > 0) {
+            let wage = job.wage * lvl;
+            if(p.family === 'blood') wage = Math.floor(wage * 1.1); // Blood family bonus
+            
+            // Item bonus check
+            if(key === 'phone' && p.items.includes('phone')) wage += 50;
+            if(key === 'motor' && p.items.includes('tool')) wage += 50;
+
+            btns += `<button class="btn btn-action" onclick="Game.doJob('${key}', ${wage})">
+                打工赚钱 (+${wage})
+            </button>`;
+        } else {
+            btns += `<button class="btn disabled">打工 (需${SKILLS[key].n}技能)</button>`;
+        }
+
+        // Shop in specific places
+        if(key === 'hair') {
+            btns += this.renderBuyBtn('wig1', p);
+            btns += this.renderBuyBtn('wig2', p);
+        } else if (key === 'phone') {
+            btns += this.renderBuyBtn('phone', p);
+        } else if (key === 'motor') {
+            btns += this.renderBuyBtn('bike', p);
+            btns += this.renderBuyBtn('tool', p);
+        }
+
+        btns += `<button class="btn" onclick="Game.closeModal()">离开</button></div>`;
+        this.showModal(html + btns);
+    },
+
+    renderBuyBtn: function(key, p) {
+        const it = ITEMS[key];
+        if(p.items.includes(key)) return ``; // Already bought
+        let canAfford = p.money >= it.cost;
+        return `<button class="btn ${canAfford ? 'btn-gold' : 'disabled'}" 
+            onclick="${canAfford ? `Game.buyItem('${key}')` : ''}">
+            购买 ${it.n} (-${it.cost})
+        </button>`;
+    },
+
+    doJob: function(key, wage) {
+        const p = this.curr();
+        p.money += wage; p.mood -= 10;
+        this.log(`打工结束，赚了 ${wage}元。`);
+        this.closeModal();
+    },
+
+    buyItem: function(key) {
+        const p = this.curr();
+        const it = ITEMS[key];
+        p.money -= it.cost;
+        p.items.push(key);
+        
+        if(it.type === 'hair') {
+            p.hairStyle = key;
+            p.mood += 20; 
+            this.log(`购买并换上了 ${it.n}！`);
+            this.updateTokens();
+        } else {
+            this.log(`购买了 ${it.n}`);
+        }
+        this.closeModal();
+    },
+
+    evtFactory: function() {
+        this.showModal(`
+            <h2>🏭 电子厂</h2>
+            <p>流水线不养闲人。</p>
+            <div class="opt-list">
+                <button class="btn btn-action" onclick="Game.doJobFactory()">搬砖 (+30元)</button>
+                <button class="btn" onclick="Game.closeModal()">提桶跑路</button>
+            </div>
+        `);
+    },
+    doJobFactory: function() {
+        const p = this.curr();
+        p.money += 30; p.mood -= 5;
+        this.closeModal();
+    },
+
+    evtShop: function() {
+        const p = this.curr();
+        let html = `<h2>🛒 地摊</h2><div class="opt-list">`;
+        html += this.renderBuyBtn('cig', p);
+        html += `<button class="btn" onclick="Game.closeModal()">离开</button></div>`;
+        this.showModal(html);
+    },
+    
+    evtJobMarket: function() {
+        this.showModal(`
+            <h2>💼 人才市场</h2>
+            <p>这里没有我们要找的工作。</p>
+            <div class="opt-list"><button class="btn" onclick="Game.closeModal()">离开</button></div>
+        `);
+    },
+
+    // Utils
+    log: function(msg) { 
+        const l = document.getElementById('log'); 
+        l.innerHTML = `> ${msg}<br>` + l.innerHTML; 
+    },
+    
+    toggleBag: function() {
+        const p = this.curr();
+        let html = `<h3 style="color:var(--neon-blue);margin-top:0">背包</h3><div style="text-align:left;font-size:0.9rem;display:grid;gap:5px;">`;
+        if(p.items.length === 0) html += `空空如也...`;
+        
+        p.items.forEach(k => {
+            const it = ITEMS[k];
+            html += `<div style="border:1px solid #555;padding:5px;">
+                <b>${it.icon} ${it.n}</b><br><span style="color:#888;font-size:0.8rem">${it.desc}</span>
+                ${it.type==='consumable' ? `<button class="btn btn-action" style="padding:2px;font-size:0.8rem;float:right" onclick="Game.useItem('${k}')">使用</button>` : ''}
+            </div>`;
+        });
+        
+        html += `</div><button class="btn" style="width:100%;margin-top:10px" onclick="Game.closeModal()">关闭</button>`;
+        this.showModal(html);
+    },
+
+    useItem: function(key) {
+        const p = this.curr();
+        const it = ITEMS[key];
+        let msg = it.effect(p);
+        alert(msg);
+        this.updateHUD();
+        this.closeModal(); 
+    },
+
+    showRules: function() {
+        alert("目标: 赚够1000元和500资本。\n规则: 去技校学技能 -> 去对应店铺打工 -> 赚钱买装备 -> 走向人生巅峰。");
+    },
+
+    gameOver: function(win) {
+        let html = win 
+            ? `<h1 style="color:yellow">VICTORY</h1><p>你建立了杀马特帝国！</p>`
+            : `<h1 style="color:grey">GAME OVER</h1><p>梦醒了，回村种田吧。</p>`;
+        html += `<button class="btn btn-primary" onclick="location.reload()">重来</button>`;
+        this.showModal(html);
+    }
+};
+
+Game.init();
+</script>
+</body>
+</html>
