@@ -14,7 +14,7 @@
             --neon-red: #ff3333;
             --neon-purple: #9d00ff;
             --bg-color: #050005;
-            --font-main: 'VT323', "SimSun", monospace;
+            --font-main: 'VT323', "SimSun", "Songti SC", monospace;
         }
 
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -62,6 +62,7 @@
         .btn-primary { border-color: var(--neon-pink); color: var(--neon-pink); box-shadow: 3px 3px 0 var(--neon-pink); }
         .btn-action { border-color: var(--neon-blue); color: var(--neon-blue); box-shadow: 3px 3px 0 var(--neon-blue); }
         .btn-danger { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 3px 3px 0 var(--neon-red); }
+        .btn-gold { border-color: gold; color: gold; box-shadow: 3px 3px 0 #b8860b; }
 
         /* HUD */
         #hud {
@@ -78,8 +79,8 @@
         .stat-val { color: var(--neon-yellow); font-weight: bold; }
         
         .family-badge {
-            position: absolute; bottom: -5px; right: -5px; background: var(--neon-purple); 
-            color: #fff; font-size: 0.6rem; padding: 2px 4px; border-radius: 4px; display: none;
+            position: absolute; bottom: 0px; right: 0px; background: var(--neon-purple); 
+            color: #fff; font-size: 0.6rem; padding: 1px 3px; z-index: 5; display: none;
         }
 
         #turn-banner {
@@ -92,6 +93,7 @@
             flex: 1; overflow-y: auto; padding: 20px;
             background: radial-gradient(circle, #220022 0%, #000 100%);
             scrollbar-width: none; position: relative; z-index: 1;
+            -webkit-overflow-scrolling: touch;
         }
         .grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px;
@@ -114,12 +116,16 @@
         .t-work { border-color: var(--neon-green); color: var(--neon-green); }
         .t-boss { border-color: var(--neon-red); animation: pulse 2s infinite; }
         .t-cafe { border-color: var(--neon-purple); color: var(--neon-purple); }
+        .t-enemy { border-color: #555; color: #888; }
+        .t-tv { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+        .t-art { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .t-start { border-color: #fff; color: #fff; }
 
         /* Token */
         .token {
             width: 32px; height: 32px; position: absolute; z-index: 10;
             display: flex; justify-content: center; align-items: center;
-            transition: all 0.3s ease-out; filter: drop-shadow(0 0 5px #fff);
+            transition: all 0.3s ease-out; filter: drop-shadow(0 0 5px #fff); pointer-events: none;
         }
         .hair-shape {
             width: 100%; height: 100%; position: absolute; top: -5px;
@@ -137,7 +143,7 @@
             padding-bottom: calc(10px + env(safe-area-inset-bottom));
         }
         #log {
-            height: 100px; /* Taller log area */
+            height: 100px;
             overflow-y: auto; font-size: 0.95rem; color: var(--neon-green);
             background: #000; padding: 8px; border: 1px solid #333; 
             font-family: "SimSun", monospace; line-height: 1.4;
@@ -164,7 +170,8 @@
         /* Lists */
         .opt-list { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
         .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .char-card { border: 1px solid #fff; padding: 8px; cursor: pointer; text-align: center; background: #222; }
+        .char-card { border: 1px solid #fff; padding: 8px; cursor: pointer; text-align: center; background: #222; transition: 0.2s;}
+        .char-card:hover { border-color: var(--neon-blue); }
         .char-card.selected { border-color: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); background: #300; }
         
         .fam-btn { border: 1px solid #555; padding: 10px; margin-bottom: 5px; cursor: pointer; text-align: left;}
@@ -189,7 +196,7 @@
             </div>
             <div class="hud-info">
                 <div id="p-name" style="color:#fff; font-family:'SimSun'; font-weight:bold;">Player</div>
-                <div id="p-job" style="font-size:0.7rem; color:var(--neon-green);">无业</div>
+                <div id="p-job" style="font-size:0.7rem; color:var(--neon-green);">无业游民</div>
             </div>
         </div>
         <div class="hud-stats">
@@ -205,7 +212,7 @@
 
     <div id="controls">
         <div id="log">
-            <span style="color:var(--neon-pink)">>>> 葬爱·家族 <<<</span><br>
+            <span style="color:var(--neon-pink)">>>> 葬爱·家族 (V5.0) <<<</span><br>
             在这个冰冷的世界，只有发型是有温度的。
         </div>
         <div style="display: flex; gap: 8px;">
@@ -255,12 +262,15 @@ const FAMILIES = {
 };
 
 const ITEMS = {
-    'bike': { n: '鬼火摩托', cost: 500, desc: '移动+1', type: 'passive' },
-    'phone': { n: '诺基亚', cost: 300, desc: '手机店打工加成', type: 'passive' },
-    'tool': { n: '工具箱', cost: 150, desc: '修车打工加成', type: 'passive' },
-    'wig1': { n: '七彩爆炸头', cost: 300, desc: '心情上限+20', type: 'hair', class: 'wig-rainbow' },
-    'wig2': { n: '刺猬头', cost: 200, desc: '战斗力+5', type: 'hair', class: 'wig-spike' },
-    'cig': { n: '散花烟', cost: 20, desc: '心情+15 (消耗品)', type: 'consumable', effect: (p)=>{ p.mood+=15; return "哥抽的不是烟，是寂寞。"; }}
+    'bike': { n: '鬼火摩托', icon:'🏍️', cost: 500, desc: '移动+1', type: 'passive' },
+    'phone': { n: '智能手机', icon:'📱', cost: 800, desc: '手机店打工加成/直播', type: 'passive' }, // Updated
+    'tool': { n: '工具箱', icon:'🔧', cost: 150, desc: '修车打工加成', type: 'passive' },
+    'wig1': { n: '七彩爆炸头', icon:'🌈', cost: 300, desc: '心情上限+20', type: 'hair', class: 'wig-rainbow' },
+    'wig2': { n: '刺猬头', icon:'🦔', cost: 200, desc: '战斗力+5', type: 'hair', class: 'wig-spike' },
+    'cement': { n: '优质水泥', icon:'🧱', cost: 50, desc: 'PK胜率大幅提升', type: 'active' }, // New
+    'photo': { n: '初恋照片', icon:'🖼️', cost: 0, desc: '心情-10 资本+30', type: 'passive' }, // New
+    'specialty': { n: '家乡特产', icon:'🍱', cost: 0, desc: '心情+50 (消耗品)', type: 'consumable', effect: (p)=>{ p.mood+=50; return "吃到了妈妈的味道，泪流满面。"; }},
+    'cig': { n: '散花烟', icon:'🚬', cost: 20, desc: '心情+15 (消耗品)', type: 'consumable', effect: (p)=>{ p.mood+=15; return "哥抽的不是烟，是寂寞。"; }}
 };
 
 // Map Data
@@ -414,6 +424,23 @@ const Game = {
         this.state = 'idle';
         const p = this.curr();
         
+        // WIN CONDITION CHECK
+        if(p.money >= 2000 && p.social >= 500) {
+            this.gameOver(true);
+            return;
+        }
+
+        // Frozen check
+        if(p.frozen > 0) {
+            p.frozen--;
+            this.log(`${p.name} 还在拘留中 (剩余${p.frozen}回合)...`);
+            setTimeout(() => this.nextTurn(), 1000);
+            return;
+        }
+
+        // Random Events
+        this.checkRandomEvents(p);
+
         // HUD Update
         document.getElementById('p-name').innerText = p.name;
         document.getElementById('p-money').innerText = p.money;
@@ -438,7 +465,7 @@ const Game = {
             hudHair.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
         }
 
-        let jobTxt = "无业";
+        let jobTxt = "无业游民";
         for(let k in p.jobExp) if(p.jobExp[k]>0) jobTxt = `${SKILLS[k].n} Lv.${p.jobExp[k]}`;
         document.getElementById('p-job').innerText = jobTxt;
 
@@ -450,15 +477,47 @@ const Game = {
         // Random Quote
         if(Math.random()<0.3) this.log(`<span class="martian" style="color:${p.color}">${p.name}: ${p.quotes[Math.floor(Math.random()*p.quotes.length)]}</span>`);
         
+        // Dead End Check
         if(p.money <= 0 || p.mood <= 0) {
-            // Chance to recover instead of instant game over
-            this.modal('⚠️ 穷途末路', '💀', '你快撑不下去了...', [
-                { t:'向家里要钱 (+50元)', cb:()=>{ p.money+=50; p.social-=10; this.log("妈给你打了50块..."); this.closeModal(); } },
-                { t:'乞讨 (+心情)', cb:()=>{ p.mood+=30; p.social-=20; this.log("尊严算什么..."); this.closeModal(); } },
-                { t:'放弃 (结束)', cb:()=>{ this.gameOver(false); } }
-            ]);
+            this.showModal(`
+                <h2 style="color:var(--neon-red)">⚠️ 穷途末路</h2>
+                <p style="font-size:3rem">💀</p>
+                <p>你快撑不下去了...</p>
+                <div class="opt-list">
+                    <button class="btn btn-action" onclick="Game.recover('mom')">向家里要钱 (+50元)</button>
+                    <button class="btn btn-action" onclick="Game.recover('beg')">乞讨 (+心情)</button>
+                    <button class="btn btn-danger" onclick="Game.gameOver(false)">放弃</button>
+                </div>
+            `);
             return;
         }
+    },
+
+    checkRandomEvents: function(p) {
+        // Mom's call
+        if(Math.random() < 0.1) {
+            p.mood += 20;
+            if(!p.items.includes('specialty')) {
+                p.items.push('specialty');
+                alert("📞 妈妈打来电话，寄来了【家乡特产】！\n“孩子，累了就回家。”");
+            } else {
+                alert("📞 妈妈打来电话，嘘寒问暖。\n心情+20");
+            }
+        }
+    },
+
+    recover: function(type) {
+        const p = this.curr();
+        if(type === 'mom') {
+            p.money += 50; p.social -= 10;
+            this.log("妈给你打了50块...尊严-10");
+        } else {
+            p.mood += 30; p.social -= 20;
+            this.log("在路边乞讨...尊严-20");
+        }
+        this.closeModal();
+        // Force end turn to avoid loop and simulate time passing
+        this.nextTurn(); 
     },
 
     nextTurn: function() {
@@ -506,15 +565,75 @@ const Game = {
             case 'work': this.evtWork(t.job); break;
             case 'shop': this.evtShop(); break;
             case 'boss': this.evtBoss(); break;
-            case 'cafe': this.evtCafe(); break; // New Cafe Logic
+            case 'cafe': this.evtCafe(); break;
             case 'job': this.evtJobMarket(); break;
+            case 'enemy': this.evtSecurity(); break;
+            case 'tv': this.evtTv(); break;
+            case 'art': this.evtArt(); break;
+            case 'start': this.evtVillage(); break;
             default: this.log(`到达 ${t.n}`); this.nextTurn();
         }
     },
 
     // --- EVENTS ---
 
-    // 1. Boss Node: Salary or Penalty
+    // 0. Urban Village (Updated)
+    evtVillage: function() {
+        const p = this.curr();
+        let html = `<h2>🏠 城中村</h2>`;
+        let btns = `<div class="opt-list">`;
+        
+        // Park Function
+        if(this.round >= 2) {
+            btns += `<button class="btn btn-primary" onclick="Game.doPark()">🌳 去公园 (邂逅/PK)</button>`;
+        }
+        
+        // Night Market
+        if(this.round % 3 === 0) {
+            btns += `<button class="btn btn-gold" onclick="Game.doNightMarket()">🌙 逛夜市 (稀有淘宝)</button>`;
+        } else {
+            btns += `<button class="btn disabled">夜市 (未开放)</button>`;
+        }
+
+        btns += `<button class="btn" onclick="Game.closeModal()">回家睡觉</button></div>`;
+        this.showModal(html + btns);
+    },
+
+    doPark: function() {
+        const p = this.curr();
+        const r = Math.random();
+        // PK Logic
+        if(r < 0.4) {
+            let win = (p.social > 30) || p.items.includes('cement');
+            let reward = win ? 50 : 0;
+            if(win && p.items.includes('phone')) {
+                if(confirm("PK获胜！是否开启直播？(风险：遭遇网暴)")) {
+                    if(Math.random() < 0.7) { reward *= 2; this.log("直播大火！收益翻倍！"); }
+                    else { reward = 0; p.mood -= 30; this.log("直播被喷了...心情大跌"); }
+                }
+            }
+            if(win) { p.social += 10; p.money += reward; this.log(`在金凤溜冰城斗舞${p.items.includes('cement')?'(水泥舞)':''}获胜！+${reward}元`); }
+            else { p.mood -= 10; this.log("斗舞输了...技不如人"); }
+        } else {
+            p.mood += 10; this.log("在公园散步，心情舒畅。");
+        }
+        this.closeModal();
+    },
+
+    doNightMarket: function() {
+        const p = this.curr();
+        if(p.money >= 50 && !p.items.includes('photo')) {
+            if(confirm("淘到一张泛黄的【初恋照片】，要买吗？(50元)\n效果: 心情-10，资本+30")) {
+                p.money -= 50; p.items.push('photo'); p.mood -= 10; p.social += 30;
+                this.log("买下了照片，往事涌上心头...");
+            }
+        } else {
+            this.log("夜市太吵了，没看到好东西。");
+        }
+        this.closeModal();
+    },
+
+    // 1. Boss Node
     evtBoss: function() {
         const p = this.curr();
         let r = Math.random();
@@ -540,27 +659,23 @@ const Game = {
         this.currentBossAction = action;
     },
 
-    // 2. Net Cafe: Family & Chill
+    // 2. Net Cafe
     evtCafe: function() {
         const p = this.curr();
-        
         let btns = `<div class="opt-list">`;
-        
-        // Family Logic
         if(!p.family) {
             btns += `<button class="btn btn-primary" onclick="Game.showFamilies()">加入家族</button>`;
         } else {
-            btns += `<div style="color:${FAMILIES[p.family].color};font-size:0.9rem">家族: ${FAMILIES[p.family].n}</div>`;
+            btns += `<div style="color:${FAMILIES[p.family].color};font-size:0.9rem;border:1px solid #555;padding:5px;">当前家族: ${FAMILIES[p.family].n}</div>`;
         }
-
         btns += `<button class="btn btn-action" onclick="Game.doSurf()">上网冲浪 (-20元 +30心情)</button>`;
         btns += `<button class="btn" onclick="Game.closeModal()">离开</button></div>`;
-
         this.showModal(`<h2 style="color:var(--neon-blue)">💻 飞宇网吧</h2><p>这里是我们的精神家园。</p>${btns}`);
     },
 
     doSurf: function() {
         const p = this.curr();
+        if(p.money < 20) { alert("钱不够！"); return; }
         p.money -= 20; p.mood += 30;
         this.log("在劲舞团里遇到了真爱...心情大好。");
         this.closeModal();
@@ -584,18 +699,16 @@ const Game = {
         this.closeModal();
     },
 
-    // 3. School (Logic)
+    // 3. School
     evtSchool: function() {
         const p = this.curr();
         let html = `<h2 style="color:var(--neon-blue)">🎓 蓝翔技校</h2>`;
-        
         let btns = `<div class="opt-list">`;
         for(let k in SKILLS) {
             let lvl = p.jobExp[k];
             if(lvl < SKILLS[k].max) {
                 let cost = SKILLS[k].cost[lvl];
                 let canAfford = p.money >= cost;
-                
                 btns += `<button class="btn ${canAfford ? 'btn-action' : 'disabled'}" 
                     onclick="${canAfford ? `Game.doLearn('${k}', ${cost})` : ''}">
                     进修${SKILLS[k].n} (Lv.${lvl}→${lvl+1}) <br> <span style="font-size:0.8rem">学费: ${cost}</span>
@@ -614,7 +727,7 @@ const Game = {
         this.closeModal();
     },
 
-    // 4. Work (Job & Shop Logic)
+    // 4. Work & Shop
     evtWork: function(key) {
         const p = this.curr();
         const job = JOBS[key];
@@ -623,15 +736,12 @@ const Game = {
         let html = `<h2 style="color:var(--neon-green)">${MAP[p.pos].i} ${MAP[p.pos].n}</h2>`;
         let btns = `<div class="opt-list">`;
 
-        // Work Button (Check Skill)
+        // Work Button
         if(lvl > 0) {
             let wage = job.wage * lvl;
-            if(p.family === 'blood') wage = Math.floor(wage * 1.1); // Blood family bonus
-            
-            // Item bonus check
+            if(p.family === 'blood') wage = Math.floor(wage * 1.1);
             if(key === 'phone' && p.items.includes('phone')) wage += 50;
             if(key === 'motor' && p.items.includes('tool')) wage += 50;
-
             btns += `<button class="btn btn-action" onclick="Game.doJob('${key}', ${wage})">
                 打工赚钱 (+${wage})
             </button>`;
@@ -639,7 +749,7 @@ const Game = {
             btns += `<button class="btn disabled">打工 (需${SKILLS[key].n}技能)</button>`;
         }
 
-        // Shop in specific places
+        // Shop logic
         if(key === 'hair') {
             btns += this.renderBuyBtn('wig1', p);
             btns += this.renderBuyBtn('wig2', p);
@@ -656,7 +766,7 @@ const Game = {
 
     renderBuyBtn: function(key, p) {
         const it = ITEMS[key];
-        if(p.items.includes(key)) return ``; // Already bought
+        if(p.items.includes(key)) return ``;
         let canAfford = p.money >= it.cost;
         return `<button class="btn ${canAfford ? 'btn-gold' : 'disabled'}" 
             onclick="${canAfford ? `Game.buyItem('${key}')` : ''}">
@@ -676,10 +786,8 @@ const Game = {
         const it = ITEMS[key];
         p.money -= it.cost;
         p.items.push(key);
-        
         if(it.type === 'hair') {
-            p.hairStyle = key;
-            p.mood += 20; 
+            p.hairStyle = key; p.mood += 20; 
             this.log(`购买并换上了 ${it.n}！`);
             this.updateTokens();
         } else {
@@ -688,12 +796,15 @@ const Game = {
         this.closeModal();
     },
 
+    // 5. Factory (Updated)
     evtFactory: function() {
+        const texts = ["流水线不养闲人。", "线长又在骂人了。", "想念村里的翠花。", "螺丝打得火星子直冒。"];
+        const t = texts[Math.floor(Math.random() * texts.length)];
         this.showModal(`
             <h2>🏭 电子厂</h2>
-            <p>流水线不养闲人。</p>
+            <p>${t}</p>
             <div class="opt-list">
-                <button class="btn btn-action" onclick="Game.doJobFactory()">搬砖 (+30元)</button>
+                <button class="btn btn-action" onclick="Game.doJobFactory()">打螺丝 (+30元)</button>
                 <button class="btn" onclick="Game.closeModal()">提桶跑路</button>
             </div>
         `);
@@ -701,23 +812,133 @@ const Game = {
     doJobFactory: function() {
         const p = this.curr();
         p.money += 30; p.mood -= 5;
+        this.log("打了半天螺丝，感觉身体被掏空。");
         this.closeModal();
     },
 
+    // 6. Shop (Updated)
     evtShop: function() {
         const p = this.curr();
         let html = `<h2>🛒 地摊</h2><div class="opt-list">`;
         html += this.renderBuyBtn('cig', p);
+        html += this.renderBuyBtn('cement', p);
         html += `<button class="btn" onclick="Game.closeModal()">离开</button></div>`;
         this.showModal(html);
     },
     
+    // 7. Job Market (Updated)
     evtJobMarket: function() {
         this.showModal(`
             <h2>💼 人才市场</h2>
-            <p>这里没有我们要找的工作。</p>
-            <div class="opt-list"><button class="btn" onclick="Game.closeModal()">离开</button></div>
+            <p>即使没有技能，也有活路。</p>
+            <div class="opt-list">
+                <button class="btn btn-action" onclick="Game.doOddJob('brick')">工地搬砖 (+50元 -15心情)</button>
+                <button class="btn btn-action" onclick="Game.doOddJob('leaflet')">发传单 (+30元 -5心情)</button>
+                <button class="btn btn-danger" onclick="Game.doOddJob('delivery')">跑外卖 (高风险高回报)</button>
+                <button class="btn" onclick="Game.closeModal()">离开</button>
+            </div>
         `);
+    },
+
+    doOddJob: function(type) {
+        const p = this.curr();
+        let msg = "";
+        if(type === 'brick') {
+            p.money += 50; p.mood -= 15; msg = "搬了一天砖，手都磨破了。";
+        } else if (type === 'leaflet') {
+            p.money += 30; p.mood -= 5; msg = "发了一天传单，遭人白眼。";
+        } else if (type === 'delivery') {
+            if(Math.random() < 0.2) {
+                p.money -= 100; p.mood -= 20; msg = "惨！送外卖出车祸赔了钱...";
+            } else {
+                p.money += 80; p.mood -= 10; msg = "送外卖跑断腿，赚了80元。";
+            }
+        }
+        this.log(msg);
+        this.closeModal();
+    },
+
+    // 8. Security (New)
+    evtSecurity: function() {
+        const p = this.curr();
+        let html = `<h2>👮 治安亭</h2>`;
+        let eventType = Math.random() < 0.5 ? 'id' : 'hair';
+        let resHtml = "";
+
+        if(eventType === 'id') {
+            resHtml = "<p>警察叔叔：身份证拿出来看看。</p>";
+            if(p.social < 30 && Math.random() < 0.4) {
+                p.frozen = 1;
+                resHtml += "<p style='color:red'>社会闲散人员，拘留一周！</p>";
+                this.log("因查身份证被拘留。");
+            } else {
+                resHtml += "<p style='color:green'>查验通过，走吧。</p>";
+            }
+        } else {
+            resHtml = "<p>警察叔叔：你的发型太影响市容了！</p>";
+            if(p.hairStyle === 'wig1') { // Rainbow wig
+                p.money -= 50; p.mood -= 10;
+                resHtml += "<p style='color:red'>罚款50元！回去整改！</p>";
+                this.log("因发型太夸张被罚款。");
+            } else {
+                p.mood -= 5;
+                resHtml += "<p>被教育了一番，心情低落。</p>";
+            }
+        }
+        
+        this.showModal(`${html}${resHtml}<div class="opt-list"><button class="btn" onclick="Game.closeModal()">离开</button></div>`);
+    },
+
+    // 9. TV (New)
+    evtTv: function() {
+        const p = this.curr();
+        this.showModal(`
+            <h2>📺 电视台</h2>
+            <p>这里是名利场。</p>
+            <div class="opt-list">
+                <button class="btn btn-gold" onclick="Game.doTvShow()">参加选秀 (需100元报名费)</button>
+                <button class="btn" onclick="Game.closeModal()">离开</button>
+            </div>
+        `);
+    },
+
+    doTvShow: function() {
+        const p = this.curr();
+        if(p.money < 100) { alert("报名费不够！"); return; }
+        p.money -= 100;
+        
+        let r = Math.random();
+        if(r < 0.3) {
+            let reward = 300 + p.social * 2;
+            p.money += reward; p.social += 50;
+            this.log(`选秀一举成名！获得奖金${reward}元，名声大噪！`);
+        } else if (r < 0.6) {
+            p.mood -= 30; p.social -= 10;
+            this.log("海选被淘汰，还被做成了鬼畜视频...");
+        } else {
+            this.log("没激起什么水花，回家了。");
+        }
+        this.closeModal();
+    },
+
+    // 10. Art (New)
+    evtArt: function() {
+        const p = this.curr();
+        this.showModal(`
+            <h2>🎨 叶纳画廊</h2>
+            <p>这里只谈艺术，不谈钱(但很赚钱)。</p>
+            <div class="opt-list">
+                <button class="btn btn-primary" onclick="Game.doArt()">做人体模特 (+心情 +资本)</button>
+                <button class="btn" onclick="Game.closeModal()">离开</button>
+            </div>
+        `);
+    },
+
+    doArt: function() {
+        const p = this.curr();
+        p.mood += 20; p.social += 30;
+        this.log("为艺术献身，虽然没钱，但灵魂得到了升华。");
+        this.closeModal();
     },
 
     // Utils
@@ -746,14 +967,24 @@ const Game = {
     useItem: function(key) {
         const p = this.curr();
         const it = ITEMS[key];
+        
         let msg = it.effect(p);
+        
+        // Remove if consumable
+        if(it.type === 'consumable') {
+            const idx = p.items.indexOf(key);
+            if(idx > -1) p.items.splice(idx, 1);
+        }
+
         alert(msg);
-        this.updateHUD();
+        // Do not call startTurn() here, might loop if mood was low. Just update HUD manually or wait for next action.
+        // Actually, simple refresh of hud values is safer.
+        document.getElementById('p-mood').innerText = p.mood;
         this.closeModal(); 
     },
 
     showRules: function() {
-        alert("目标: 赚够1000元和500资本。\n规则: 去技校学技能 -> 去对应店铺打工 -> 赚钱买装备 -> 走向人生巅峰。");
+        alert("目标: 赚够2000元和500资本。\n规则: 蓝翔学艺 -> 工厂/店铺打工 -> 购买装备 -> 走向人生巅峰。\n小心治安亭，多逛城中村公园。");
     },
 
     gameOver: function(win) {
